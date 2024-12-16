@@ -10,8 +10,17 @@ pygame.init()
 clock = pygame.time.Clock()
 FPS = 60
 
+
 Screen_W = 1200
 Screen_H = 650
+
+screen = pygame.display.set_mode((dimension_w, dimension_h))
+pygame.display.set_caption("Game")
+
+def draw_text(text, font, color, x, y):
+    img = font.rander(text, True, color)
+    screen.blit(x,y)
+
 
 screen = pygame.display.set_mode((Screen_W, Screen_H))
 pygame.display.set_caption("Turn-based RPG")
@@ -115,8 +124,13 @@ while game_is_running:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+
             game_is_running = False
 
     pygame.display.update()
+
+
+           run = False
+    pass
 
 pygame.quit()
