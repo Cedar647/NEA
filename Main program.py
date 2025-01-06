@@ -2,135 +2,121 @@ import os
 from random import randint
 from sys import argv
 from time import sleep
-script_directory = os.path.dirname(os.path.abspath(argv[0]))
+script_directory = os.path.dirname(os.path.abspath(argv[0])) #change file path to current file so don't have to use file path
 os.chdir(script_directory)
 import pygame
 pygame.init()
 
+Screen_W = 1200 #width
+Screen_H = 650 #height
+
+screen = pygame.display.set_mode((Screen_W, Screen_H)) #create screen
+pygame.display.set_caption("Main Menu")
+
 clock = pygame.time.Clock()
-FPS = 60
-
-
-Screen_W = 1200
-Screen_H = 650
-
-screen = pygame.display.set_mode((dimension_w, dimension_h))
-pygame.display.set_caption("Game")
-
-def draw_text(text, font, color, x, y):
-    img = font.rander(text, True, color)
-    screen.blit(x,y)
-
-
-screen = pygame.display.set_mode((Screen_W, Screen_H))
-pygame.display.set_caption("Turn-based RPG")
+FPS = 60 #refresh rate
 
 #background
-background = pygame.image.load("Background.png").convert_alpha()
+background = pygame.image.load("Misc/Background.png").convert_alpha()
 def draw_background():
-    screen.blit(background, (0,0))
+    screen.blit(background, (0,0)) #draw background at the origin
 
 #text
-font = pygame.font.SysFont("Consolas", 64)
-font_color = (255,255,255)
-def draw_text(text, font, font_color, x, y):
+title_font = pygame.font.SysFont("Consolas", 64) #set font
+normal_font = pygame.font.SysFont("Consolas", 16)
+black = (0,0,0) #set color
+def draw_text(text, font, font_color, x, y): #function to draw text on screen as an image
     text_img = font.render(text, True, font_color)
     screen.blit(text_img, (x, y))
 
-#button
+#button 
 class button:
     def __init__(self, x, y, image, scale):
-       width = image.get_width()
-       height = image.get_height()
-       self.image = pygame.transform.scale(image, (width*scale//1, height*scale//1))
-       self.rect = self.image.get_rect()
-       self.rect.topleft = (x,y)
-       self.clicked = False
+        width = image.get_width()
+        height = image.get_height()
+        self.image = pygame.transform.scale(image, (width*scale//1, height*scale//1)) #scale up button
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x,y) #coordinate to draw button at
+        self.clicked = False 
     def draw(self):
-       action = False
-       mouse_coor = pygame.mouse.get_pos()
-       if self.rect.collidepoint(mouse_coor):
-            if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+        screen.blit(self.image, (self.rect.x, self.rect.y))
+    def click_check(self):
+        action = False #action commited by button varies but they can operate based on a common flag
+        mouse_coor = pygame.mouse.get_pos() #finds position of mouse
+        if self.rect.collidepoint(mouse_coor): #check if mouse is on the button
+            if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False: #checks if left mouse (indicated by [0]) is clicked (==1)
                 self.clicked = True
                 action = True
-            if pygame.mouse.get_pressed()[0] == 0:
-                self.clicked = False      
-       screen.blit(self.image, (self.rect.x, self.rect.y))
-       return action
+            if pygame.mouse.get_pressed()[0] == 0: #or not clicked(== 0)
+                self.clicked = False
+        return action #returns result of check to tell the game if button has been clicked
 
-start_button_img = pygame.image.load("button_start.png")
-start_button = button(16, 450+16, start_button_img, 1)
-exit_button_img = pygame.image.load("button_exit.png")
-exit_button = button(16, 650-16-68, exit_button_img, 1)
+exit_button_img = pygame.image.load("Misc/button_exit.png")
+exit_button = button(16, 566, exit_button_img, 1) #exit button
+new_game_button_img = pygame.image.load("Misc/button_newg.png")
+new_game_button = button(16, 466, new_game_button_img, 1) #start button
+#character selection screen buttons:
+warrior_icon = button(100, 120, pygame.image.load("Knight sprites/Icon.png"), 2)
 
-#character class
+
 class character:
-
-    def __init__(self, name, max_hp, base_atk, base_def, max_mp, base_spd, crit, x_coor, y_coor):
+    def __init__(self, name, max_hp, max_mp, base_atk, base_def, base_spd):
         self.name = name
         self.role = ""
         self.max_hp = max_hp
         self.current_hp = max_hp
-        self.base_atk = base_atk
-        self.base_def = base_def
         self.max_mp = max_mp
         self.current_mp = max_mp
+        self.base_atk = base_atk
+        self.base_def = base_def
         self.base_spd = base_spd
-        self.crit = crit
-        self.crit_dmg_multiplier = 1.5
+        self.crit_multiplier = 1.5
         self.dmg_reduction = 1
-        self.ult_cost = 10
-        self.ult_energy = 0
-        self.skill_dmg = 0
-        self.skill_hit = 1
+        self.sp_cost = 10
+        self.current_sp = 0
         self.atk_buff_multiplier = 1  #stat increase
         self.def_buff_multiplier = 1
         self.spd_buff_multiplier = 1
-        self.buff_duration = 0
         self.current_atk = base_atk * self.atk_buff_multiplier
         self.current_def = base_def * self.def_buff_multiplier
         self.current_spd = base_spd * self.spd_buff_multiplier
         self.timer = 1000 / self.current_spd
-        self.status = "\t"
-        self.statwindow = ""
         self.alive = True
         self.blocking = False
-        self.attack = False
-        self.charging = False
-        self.counter_stance = False
-        self.stat_up_bonus = ""
-        self.skill_multiplier = 0
-        self.mp_cost = 0
-        image = pygame.image.load("Warrior_BasicATK.png")
-        self.image = pygame.transform.scale(image, (image.get_width()*0.75, image.get_height()*0.75))
-        self.rect = self.image.get_rect()
-        self.rect.center = (x_coor,y_coor)
+        self.img = pygame.image.load("Misc/Border.png") #placeholder image
+        self.rect = self.img.get_rect()
+    def draw(self, x_pos, y_pos):
+        screen.blit(self.img, self.rect)
+        self.rect.center = (x_pos,y_pos)
+        screen.blit(self.img, (self.rect.x, self.rect.y))
 
-    def draw(self):
-        screen.blit(self.image, self.rect)
-
-player = character("Name", 10, 3, 3, 10, 2, 5, 42, 604)
-
-#game loop
 game_is_running = True
-while game_is_running:
-    clock.tick(FPS)
-    draw_background()
-    draw_text("Turn-based game v0.0", font, font_color, 120, 100)
-    if start_button.draw():
-        print("Start")
-    if exit_button.draw():
-        game_is_running = False 
+class_option = ""
+screen_state = "Menu" # what screen should be displayed
+while game_is_running: #main game loop
+    if screen_state == "Menu": #checks if game is currently on main menu
+        draw_background()
+        draw_text("Turn-based game v0.0", title_font, black, 120, 100)
+        new_game_button.draw()
+        exit_button.draw()
+        if exit_button.click_check():
+            game_is_running = False  
+        if new_game_button.click_check():
+            screen_state = "Char select"
+            pygame.display.set_caption("Character Selection")
+    elif screen_state == "Char select": #check if game is currently on character selection
+        draw_background()
+        draw_text("Character selection", title_font, black, 25, 25)
+        warrior_icon.draw()
+        if warrior_icon.click_check():
+            class_option = "Warrior" #used to later initialise corresponding class
+        if class_option == "Warrior":
+            draw_text("Selected: Warrior", title_font, black, 16, 500)
+    else:   
+        pass
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-
+    for event in pygame.event.get(): #checks input
+        if event.type == pygame.QUIT: #click X corner closes the program
             game_is_running = False
-
+    
     pygame.display.update()
-
-
-           run = False
-    pass
-
-pygame.quit()
