@@ -1,3 +1,4 @@
+
 import os
 from random import randint
 from sys import argv
@@ -22,9 +23,17 @@ def draw_background():
     screen.blit(background, (0,0)) #draw background at the origin
 
 #text
-title_font = pygame.font.SysFont("Consolas", 64) #set font
-normal_font = pygame.font.SysFont("Consolas", 16)
-black = (0,0,0) #set color
+#set font
+title_font = pygame.font.SysFont("Consolas", 64) 
+normal_font = pygame.font.SysFont("Consolas", 32)
+small_font = pygame.font.SysFont("Consolas", 16)
+#set color
+black = (0,0,0)
+red = (255,0,0)
+blue = (0,255,0)
+green = (0,0,255)
+gold = (255,217,0)
+
 def draw_text(text, font, font_color, x, y): #function to draw text on screen as an image
     text_img = font.render(text, True, font_color)
     screen.blit(text_img, (x, y))
@@ -56,8 +65,9 @@ exit_button = button(16, 566, exit_button_img, 1) #exit button
 new_game_button_img = pygame.image.load("Misc/button_newg.png")
 new_game_button = button(16, 466, new_game_button_img, 1) #start button
 #character selection screen buttons:
-warrior_icon = button(100, 120, pygame.image.load("Knight sprites/Icon.png"), 2)
-
+warrior_icon = button(100, 120, pygame.image.load("Knight sprites/Icon.png"), 1.75)
+confirm_button = button(990, 470, pygame.image.load("Misc/button_confirm.png"), 1)
+return_to_menu_b = button(990, 560, pygame.image.load("Misc/button_return_menu.png"), 1)
 
 class character:
     def __init__(self, name, max_hp, max_mp, base_atk, base_def, base_spd):
@@ -108,10 +118,19 @@ while game_is_running: #main game loop
         draw_background()
         draw_text("Character selection", title_font, black, 25, 25)
         warrior_icon.draw()
+        confirm_button.draw()
+        return_to_menu_b.draw()
         if warrior_icon.click_check():
             class_option = "Warrior" #used to later initialise corresponding class
         if class_option == "Warrior":
-            draw_text("Selected: Warrior", title_font, black, 16, 500)
+            draw_text("Selected: Warrior", normal_font, black, 25, 475)
+        if confirm_button.click_check() and class_option != "": #ensures player can't confirm class selection without having selected a class
+            screen_state = "Tutorial" #allow change screen to tutorial
+            pygame.display.set_caption("Tutorial") #change screen caption to "Tutorial"
+        if return_to_menu_b.click_check(): #allow return button to change screen to main menu
+            screen_state = "Menu"
+            pygame.display.set_caption("Main Menu")
+            class_option = "" #reset class option since the player exits the class selection
     else:   
         pass
 
