@@ -30,8 +30,8 @@ small_font = pygame.font.SysFont("Consolas", 16)
 #set color
 black = (0,0,0)
 red = (255,0,0)
-blue = (0,255,0)
-green = (0,0,255)
+green = (0,255,0)
+blue = (0,0,255)
 gold = (255,217,0)
 
 def draw_text(text, font, font_color, x, y): #function to draw text on screen as an image
