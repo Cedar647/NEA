@@ -49,22 +49,11 @@ def char_select_draw_attributes(): #func to display char attributes during chara
 dice_display = ""
 def char_select_draw_dices(): #display dices during character selection
     global dice_display
-    dice1button = dice_button(50,550, player.dicebag[0], 1)
-    dice2button = dice_button(160,550, player.dicebag[1], 1)
-    dice3button = dice_button(280,550, player.dicebag[2], 1)
-    spdicebutton = dice_button(450, 550, player.SPdice, 1)
-    dice1button.draw()
-    dice2button.draw()
-    dice3button.draw()
-    spdicebutton.draw()
-    if dice1button.click_check():
-        dice_display = player.dicebag[0]
-    if dice2button.click_check():
-        dice_display = player.dicebag[1]
-    if dice3button.click_check():
-        dice_display = player.dicebag[2]
-    if spdicebutton.click_check():
-        dice_display = player.SPdice
+    dice_list = [dice_button(50,550, player.dicebag[0], 1),dice_button(160,550, player.dicebag[1], 1),dice_button(270,550, player.dicebag[2], 1),dice_button(450, 550, player.SPdice, 1)]
+    for x in dice_list:
+        x.draw()
+        if x.click_check():
+            dice_display = x.dice
     if dice_display != "":
         desc_lines = dice_display.desc.split(". ") #split string into list of lines
         draw_text(f"{dice_display.name}", normal_font, black, 625, 465)
@@ -99,6 +88,7 @@ class button:
 class dice_button(button):
     def __init__(self,x, y, dice, scale): #replace attribute image with dice to allow accessing both dice image and type attribute
         self.cost = str(dice.cost)
+        self.dice = dice
         image = dice.image #take image of dice 
         super().__init__(x, y, image, scale) #initialize as button
         self.type_icon = pygame.image.load(f"Type_Icons/{dice.type}.png")
