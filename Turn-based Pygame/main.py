@@ -40,6 +40,12 @@ def draw_text(text, font, font_color, x, y): #function to draw text on screen as
     text_img = font.render(text, True, font_color)
     screen.blit(text_img, (x, y))
 
+level_msg = []
+def level_msg_display():
+    for line in range(len(level_msg)):
+        draw_text(level_msg[line], small_font, black, 850, 465+20*line)
+
+
 def char_select_draw_attributes(): #func to display char attributes during character selection
     draw_text(f"HP:{player. max_hp}", small_font, red, 25, 500)
     draw_text(f"MP:{player.max_mp}", small_font, blue, 125, 500)
@@ -183,17 +189,19 @@ class character:
         screen.blit(self.image, self.rect)  
 #absorb dice
     def absorb(self):
-        dice = self.selected_diceB.dice
-        self.current_mp += dice.cost
-        draw_text(f"{dice.name} absorbed for {dice.cost} MP", small_font, black, 850, 465)
-        if self.current_mp > self.max_mp:
+        msg = [] #messages to be displayed
+        dice = self.selected_diceB.dice #get the selected dice (actual dice instead of the button)
+        self.current_mp += dice.cost #increase MP by dice cost
+        msg.append(f"{dice.name} absorbed for {dice.cost} MP") #add line to list for display
+        if self.current_mp > self.max_mp: #extra MP is converted into SP
             overflow = self.current_mp - self.max_mp
             self.current_sp += overflow
             self.current_mp = self.max_mp
-            draw_text(f"{overflow} overflowed MP converted into SP", small_font, black, 850, 465)
-            if self.current_sp > self.max_sp:
-                draw_text(f"{self.current_sp - self.max_sp} SP lost", small_font, black, 850, 485)
+            msg.append(f"{overflow} overflowed MP converted into SP")
+            if self.current_sp > self.max_sp: #extra SP is lost
+                level_msg.append(f"{self.current_sp - self.max_sp} SP lost")
                 self.current_sp = self.max_sp
+        return msg #return the lines for display
                 
             
 #dice menu
@@ -211,6 +219,8 @@ class character:
                 #make use button always drawn under selected dice
             if self.selected_diceB!= "" and already_displayed == False: #if a dice was selected and its info has not been displayed
                 self.selected_diceB.info(850,465) #display info
+                global level_msg
+                level_msg = []
                 already_displayed = True #if info has been displayed then drawing it again in the same loop is not required
                 #use button may move outside screen if its assigned dice is not displayed due to menu navigation
                 if use_button.rect.topleft[0] >= 100 and use_button.rect.topleft[0] < 580 and self.selected_diceB != self.SPdice_button: #if the button is of a displayed dice
@@ -303,7 +313,9 @@ while game_is_running: #main game loop
         player.dice_menu(leftB,rightB,False) #include dice selection step
         #perform dice action
         if absorb_button.click_check():
-            player.absorb()
+            level_msg = player.absorb() #function returns the messages for display
+            player.selected_diceB = "" #reset selected dice since it has been absorbed
+        level_msg_display() #display messages
     for event in pygame.event.get(): #checks input
         if event.type == pygame.QUIT: #click X corner closes the program
             game_is_running = False
