@@ -225,7 +225,8 @@ class character:
                 #use button may move outside screen if its assigned dice is not displayed due to menu navigation
                 if use_button.rect.topleft[0] >= 100 and use_button.rect.topleft[0] < 580 and self.selected_diceB != self.SPdice_button: #if the button is of a displayed dice
                     use_button.draw() #display use/absorb button
-                    absorb_button.draw()
+                    if self.selected_diceB.dice.cost > 0:
+                        absorb_button.draw()
             if index >= len(self.dicebag)-1: #if there's less than 4 dices then stop drawing at the last dice
                 break
         self.SPdice_button.draw() #draw SP dice
@@ -312,7 +313,7 @@ while game_is_running: #main game loop
             x.animate()
         player.dice_menu(leftB,rightB,False) #include dice selection step
         #perform dice action
-        if absorb_button.click_check():
+        if absorb_button.click_check() and player.selected_diceB.dice.cost > 0:
             level_msg = player.absorb() #function returns the messages for display
             player.selected_diceB = "" #reset selected dice since it has been absorbed
         level_msg_display() #display messages
