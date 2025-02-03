@@ -26,13 +26,25 @@ class baseATKd6(dice):
     def __init__(self):
         super().__init__("Standard ATK D6", "Equal chance to roll 1->6. Deal result as DMG", [1,2,3,4,5,6], "ATK", 1, 0)
 
-class baseDEFd6(dice):
-    def __init__(self):
-        super().__init__("Standard DEF D6", "Equal chance to roll 1->6. Gain roll result as Shield", [1,2,3,4,5,6], "DEF", 1, 0)
-
 class baseATKd8(dice):
     def __init__(self):
         super().__init__("Standard ATK D8", "Equal chance to roll 1->8. Deal result as DMG", [1,2,3,4,5,6,7,8], "ATK", 1, 1)
+
+class baseATKd12(dice):
+    def __init__(self):
+        super().__init__("Standard ATK D12", "Equal chance to roll 1->12. Deal result as DMG", [1,2,3,4,5,6,7,8,9,10,11,12], "ATK", 1, 1)
+
+class baseATKd20(dice):
+    def __init__(self):
+        super().__init__("Standard ATK D20", "Equal chance to roll 1->20. Deal result as DMG", [x for x in range (1,21)], "ATK", 1, 2)
+
+class baseATKd4(dice):
+    def __init__(self):
+        super().__init__("Standard ATK D4", "Equal chance to roll 1->4. Deal result as DMG", [1,2,3,4], "ATK", 1, 1)
+
+class baseDEFd6(dice):
+    def __init__(self):
+        super().__init__("Standard DEF D6", "Equal chance to roll 1->6. Gain roll result as Shield", [1,2,3,4,5,6], "DEF", 1, 0)
 
 class warriorSP(dice):
     def __init__(self):
