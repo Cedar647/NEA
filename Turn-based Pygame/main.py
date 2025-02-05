@@ -148,7 +148,7 @@ class character:
 #base attributes
         self.attr_x = attr_x
         self.max_hp = max_hp
-        self.current_hp = max_hp
+        self.current_hp = max_hp - 1
         self.max_mp = max_mp
         self.current_mp = 0
         self.max_sp = max_mp
@@ -157,14 +157,20 @@ class character:
         self.base_def = base_def
         self.shield = 0
         self.base_spd = base_spd
-        char_class = "Warrior"
+        self.discard_bag = []
+        self.char_class = "Warrior"
+        self.name = "Warrior"
+        self.alive = True
+        self.action = "Idle"
+        self.anim_spd = 0.1
 #animation
         self.anim_list = []
         for frame in range(7): #idle frames
-            image = pygame.image.load(f"{char_class}/Idle/{frame}.png")
+            image = pygame.image.load(f"{self.char_class}/{self.action}/{frame}.png")
             image = pygame.transform.scale(image, (3*image.get_width(), 3*image.get_height()))
             self.anim_list.append(image)
         self.frame = 0
+        self.max_frame = 7
         self.image = self.anim_list[self.frame]
         self.rect = self.image.get_rect()
         self.rect.center = (400,300)
@@ -173,7 +179,8 @@ class character:
         self.indexR = 4
         self.displayinfo = False
         self.selected_diceB = ""
-    def attr_draw(self): #display attributes on level screen
+#display attributes on level screen
+    def attr_draw(self): 
         for x in [bar(self.attr_x,25,"HP",self.current_hp, self.max_hp),bar(self.attr_x,40,"MP",self.current_mp, self.max_mp),bar(self.attr_x,55,"SP",self.current_sp, self.max_sp)]:
             x.draw()
         draw_text(f"ATK: {self.base_atk}", small_font, red,self.attr_x,75)
@@ -183,10 +190,36 @@ class character:
 #display character sprites
     def animate(self):
         self.image = self.anim_list[floor(self.frame)] #ensures an integer is used for index
-        self.frame += 0.1 #update new frame once per 10 ticks
-        if self.frame >= 6: #loop animation
+        self.frame += self.anim_spd #update new frame once per x ticks. 0.1 => per 10 ticks and 0.2 => per 5 ticks
+        if self.frame >= self.max_frame: #loop animation
             self.frame = 0
+            if self.action != "Idle":
+                self.action = "Idle"
+                self.anim_update(7,0.1)
+                self.frame = 0
         screen.blit(self.image, self.rect)  
+#update animation when action is changed
+    def anim_update(self,new_max_frame, new_spd): 
+        self.anim_list = []
+        self.max_frame = new_max_frame #update new number of frames in action
+        self.anim_spd = new_spd
+        self.frame = 0
+        for frame in range(self.max_frame): #idle frames
+            image = pygame.image.load(f"{self.char_class}/{self.action}/{frame}.png")
+            image = pygame.transform.scale(image, (3*image.get_width(), 3*image.get_height()))
+            self.anim_list.append(image)
+#chain any 2 animations together, used for multi-hit ATK
+    def anim_chain(self, action_list, new_spd): 
+        self.anim_list = []
+        for x in action_list: #for every action, adds all of its frame to the list
+            self.action = x
+            for frame in range(6): #every animation for chaining is 6 frames. will update to be dynamic
+                image = pygame.image.load(f"{self.char_class}/{self.action}/{frame}.png")
+                image = pygame.transform.scale(image, (3*image.get_width(), 3*image.get_height()))
+                self.anim_list.append(image)
+        self.max_frame = len(self.anim_list) #number of frames
+        self.anim_spd = new_spd #set new anim spd
+        self.frame = 0 #reset frames to 0
 #absorb dice
     def absorb(self):
         msg = [] #messages to be displayed
@@ -201,9 +234,71 @@ class character:
             if self.current_sp > self.max_sp: #extra SP is lost
                 level_msg.append(f"{self.current_sp - self.max_sp} SP lost")
                 self.current_sp = self.max_sp
+        self.discard_bag.append(dice) #remove absorbed dice from list of available dice and put it in discard zone/pile/list whatever
+        self.dicebag.remove(dice)
         return msg #return the lines for display
-                
-            
+#use DEF dice 
+    def gain_shield(self):
+        msg = [] #messages to be displayed
+        dice = self.selected_diceB.dice #get the selected dice (actual dice instead of the button)
+        res = dice.roll() 
+        gain_shield = res[0]*(self.base_def*5/100) #every 1 def increase efficiency of shield gain by 5%
+        self.shield += gain_shield #adds shield
+        msg.append(f"{dice.name} rolled a {res}") #messages
+        msg.append(f"{gain_shield} shields gained")
+        self.discard_bag.append(dice) #remove used dice from list of available dice and put it in discard zone/pile/list whatever
+        self.dicebag.remove(dice)
+        return msg #return the lines for display
+    def regen(self):
+        msg = [] #messages to be displayed
+        dice = self.selected_diceB.dice #get the selected dice (actual dice instead of the button)
+        res = dice.roll() 
+        self.current_hp += res[0] #increase HP by roll result
+        msg.append(f"{dice.name} rolled a {res}") #messages
+        if self.current_hp > self.max_hp: #extra HP is lost
+            overflow = self.current_hp - self.max_hp
+            self.current_hp = self.max_hp
+            msg.append(f"{overflow} overflowed HP lost")
+        self.discard_bag.append(dice) #remove absorbed dice from list of available dice and put it in discard zone/pile/list whatever
+        self.dicebag.remove(dice)
+        return msg #return the lines for display
+#attack dice
+    def attack(self, target):
+        msg = [] #messages to be displayed
+        target_response = []
+        dice = self.selected_diceB.dice #get the selected dice (actual dice instead of the button)
+        res = dice.roll() #roll dice
+        for baseDMG in res: #multi hit requires recalculation of damage
+            target_response.append(target.take_dmg())
+            msg.append(f"{dice.name} rolled a {baseDMG}")
+            DMG = baseDMG*(self.base_atk*5/100) #every 1 ATK increases DMG dealt by 5%
+            if baseDMG in dice.crit_val:
+                DMG *= 1.5 #crit hits increases DMG dealt by 1.5x
+                msg.append("Critical Hit dealt")
+            if target.shield > 0: #if target has shield then apply shield reduction before HP reduction
+                if DMG > target.shield: #if DMG dealt is more than shield then deal the remaining to current HP
+                    reduced = target.shield #all shield reduces corresponding DMG
+                    target.shield = 0 #all shield is lost since it's less than DMG dealt
+                else: #if DMG dealt is <= shield then reduce shield by DMG dealt
+                    reduced = DMG #all DMG clocked by shield and reduced by corresponding amount
+                    target.shield -= DMG
+                DMG -= reduced #DMG is reduced
+                msg.append(f"{reduced} DMG blocked by {target.name}'s Shield") #message
+            target.current_hp -= DMG #reduce target's HP by DMG dealt
+            msg.append(f"{self.name} deals {DMG} DMG to {target.name}")
+            msg.append(" ")
+        target.anim_chain(target_response, 0.1)
+        self.discard_bag.append(dice) #remove used dice from list of available dice and put it in discard zone/pile/list whatever
+        self.dicebag.remove(dice)
+        return msg
+    def take_dmg(self):
+        if self.shield > 0:
+            self.action = "DEF" #with shield, block attack, without shield, get hurt
+            self.anim_update(6,0.1)
+        else:
+            self.action = "Hurt"
+            self.anim_update(6,0.1)
+        return self.action
 #dice menu
     def dice_menu(self,leftB,rightB,already_displayed):
         dicebag_menu = []
@@ -241,7 +336,7 @@ class character:
                 self.indexR -= 1
                 use_button.coor_mod(use_button.rect.topleft[0]+120,590) #if use/absorb button is displayed then it should be moved to
                 absorb_button.coor_mod(absorb_button.rect.topleft[0]+120, 615) #under the corresponding dice after they're moved
-        if self.indexR != len(self.dicebag): #only ... right if ... very last ...
+        if self.indexR < len(self.dicebag): #only draw right arrow if game is not displaying very last dice
             rightB.draw()
             if rightB.click_check():
                 self.indexL += 1
@@ -252,16 +347,17 @@ class character:
 
 class warrior(character):
     def __init__(self):
-        character.__init__(self, 20, 10, 10, 10, 10,25)
+        character.__init__(self, 20, 20, 20, 20, 10,25)
         self.SPdice = dc.warriorSP()
         self.SPdice_button = dice_button(700, 500, self.SPdice, 1)
-        self.dicebag = [dc.baseATKd6(), dc.baseDEFd6(), dc.baseATKd8(),dc.baseATKd12(), dc.baseATKd20()] #starting ability for Warrior        
+        self.dicebag = [dc.doubleATKd6(), dc.baseDEFd6(), dc.baseRegend6(),dc.doubleATKd6(), dc.baseATKd20()] #starting ability for Warrior        
 
 class enemy(character):
     def __init__(self):
         character.__init__(self, 20, 10, 10, 10, 10,825)
         self.dicebag = [dc.baseATKd6(), dc.baseDEFd6(), dc.baseATKd8()]
         self.rect.center = (800,300)
+        self.shield = 3
 
 game_is_running = True
 class_option = ""
@@ -315,11 +411,25 @@ while game_is_running: #main game loop
         #perform dice action
         if absorb_button.click_check() and player.selected_diceB.dice.cost > 0:
             level_msg = player.absorb() #function returns the messages for display
-            player.selected_diceB = "" #reset selected dice since it has been absorbed
+            player.selected_diceB = "" #reset selected dice since it has been used
+        if use_button.click_check():
+            match player.selected_diceB.dice.type:
+                case "DEF": level_msg = player.gain_shield() #if DEF dice used then gives player shield
+                case "Regen": level_msg = player.regen()
+                case "ATK":
+                    if player.selected_diceB.dice.copies == 1: #if dice is single then play random atk anim
+                        player.action = f"ATK {randint(1,3)}" #random atk animation
+                        player.anim_update(6, 0.1)
+                    else: #if dice is multihit (currently goes up to 2 max) 
+                        action_list = ["ATK 1", "ATK 2", "ATK 3"] 
+                        action_list.pop(randint(1,3)-1) #remove random animation from list so that 2 is played (1+2 or 1+3 or 2+3)
+                        player.anim_chain(action_list, 0.1)
+                    level_msg = player.attack(opp)
+                case _: pass #temporary ignore all other types
+            player.selected_diceB = "" #reset selected dice since it has been used
         level_msg_display() #display messages
     for event in pygame.event.get(): #checks input
         if event.type == pygame.QUIT: #click X corner closes the program
             game_is_running = False
     
     pygame.display.update()
-
