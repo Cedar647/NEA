@@ -150,7 +150,7 @@ class character:
         self.max_hp = max_hp
         self.current_hp = max_hp - 1
         self.max_mp = max_mp
-        self.current_mp = 0
+        self.current_mp = 3
         self.max_sp = max_mp
         self.current_sp = 0
         self.base_atk = base_atk
@@ -257,8 +257,12 @@ class character:
         msg.append(f"{dice.name} rolled a {res}") #messages
         if self.current_hp > self.max_hp: #extra HP is lost
             overflow = self.current_hp - self.max_hp
+            healed = res[0] - overflow
             self.current_hp = self.max_hp
+            msg.append(f"{healed} HP regenerated")
             msg.append(f"{overflow} overflowed HP lost")
+        else:
+            msg.append(f"{res} HP regenerated")
         self.discard_bag.append(dice) #remove absorbed dice from list of available dice and put it in discard zone/pile/list whatever
         self.dicebag.remove(dice)
         return msg #return the lines for display
@@ -347,7 +351,7 @@ class character:
 
 class warrior(character):
     def __init__(self):
-        character.__init__(self, 20, 20, 20, 20, 10,25)
+        character.__init__(self, 20, 20, 20, 20, 10, 25)
         self.SPdice = dc.warriorSP()
         self.SPdice_button = dice_button(700, 500, self.SPdice, 1)
         self.dicebag = [dc.doubleATKd6(), dc.baseDEFd6(), dc.baseRegend6(),dc.doubleATKd6(), dc.baseATKd20()] #starting ability for Warrior        
@@ -413,19 +417,24 @@ while game_is_running: #main game loop
             level_msg = player.absorb() #function returns the messages for display
             player.selected_diceB = "" #reset selected dice since it has been used
         if use_button.click_check():
-            match player.selected_diceB.dice.type:
-                case "DEF": level_msg = player.gain_shield() #if DEF dice used then gives player shield
-                case "Regen": level_msg = player.regen()
-                case "ATK":
-                    if player.selected_diceB.dice.copies == 1: #if dice is single then play random atk anim
-                        player.action = f"ATK {randint(1,3)}" #random atk animation
-                        player.anim_update(6, 0.1)
-                    else: #if dice is multihit (currently goes up to 2 max) 
-                        action_list = ["ATK 1", "ATK 2", "ATK 3"] 
-                        action_list.pop(randint(1,3)-1) #remove random animation from list so that 2 is played (1+2 or 1+3 or 2+3)
-                        player.anim_chain(action_list, 0.1)
-                    level_msg = player.attack(opp)
-                case _: pass #temporary ignore all other types
+            skill = player.selected_diceB.dice #actual dice used, not the button
+            if skill.cost > player.current_mp: #if insufficient MP then do not use dice
+                level_msg.append("Insufficient MP")
+            else:
+                match skill.type:
+                    case "DEF": level_msg = player.gain_shield() #if DEF dice used then gives player shield
+                    case "Regen": level_msg = player.regen() #if Regen dice used then heal
+                    case "ATK": #if ATK dice used then deals DMG
+                        if skill.copies == 1: #if dice is single then play random atk anim
+                            player.action = f"ATK {randint(1,3)}" #random atk animation
+                            player.anim_update(6, 0.1)
+                        else: #if dice is multihit (currently goes up to 2 max) 
+                            action_list = ["ATK 1", "ATK 2", "ATK 3"] 
+                            action_list.pop(randint(1,3)-1) #remove random animation from list so that 2 is played (1+2 or 1+3 or 2+3)
+                            player.anim_chain(action_list, 0.1)
+                        level_msg = player.attack(opp)
+                    case _: pass #temporary ignore all other types
+                player.current_mp -= skill.cost #reduce MP equal to cost
             player.selected_diceB = "" #reset selected dice since it has been used
         level_msg_display() #display messages
     for event in pygame.event.get(): #checks input
